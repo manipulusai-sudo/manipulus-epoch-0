@@ -8,7 +8,7 @@ In an era of **Physical AI**, the gap between motion and intent is a safety liab
 ## Getting Started (The Handshake)
 
 ### 1. Install the Controller
-Open the [Live Demo](https://manipulusai-sudo.github.io/manipulus-epoch-0/) and select **"Add to Home Screen"** on your mobile device. This installs the protocol locally.
+Open the [Live Demo](https://manipulusai-sudo.github.io/manipulus-epoch-0/) and select **"Add to Home Screen"** on desktop. This installs the protocol locally.
 
 ### 2. Enter Airplane Mode
 To verify Sovereignty, disconnect from the internet. Manipulus is designed to function in **"Air-Gapped"** environments where data privacy is non-negotiable.
