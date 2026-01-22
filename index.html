@@ -1022,7 +1022,7 @@ function initSupabase() {
 async function trackEvent(eventType) {
     if (!supabaseClient) return;
     try {
-        await supabaseClient.from('analytics_events').insert({ event_type: eventType });
+        await supabaseClient.from('analytics_epoch_0').insert({ event_type: eventType });
         console.log(`[ANALYTICS] Tracked: ${eventType}`);
     } catch (err) {
         console.warn('[Analytics] Error:', err);
@@ -1032,7 +1032,7 @@ async function trackEvent(eventType) {
 async function fetchAnalyticsCounts() {
     if (!supabaseClient) return { arrivals: '?', intents: '?' };
     try {
-        const { data, error } = await supabaseClient.from('analytics_events').select('event_type');
+        const { data, error } = await supabaseClient.from('analytics_epoch_0').select('event_type');
         if (error) return { arrivals: '?', intents: '?' };
         const arrivals = data.filter(e => e.event_type === 'Arrival').length;
         const intents = data.filter(e => e.event_type === 'Intent Validated').length;
