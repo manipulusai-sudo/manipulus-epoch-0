@@ -1097,11 +1097,16 @@ async function fetchAnalyticsCounts() {
     if (!supabaseClient) return { arrivals: '?', intents: '?' };
     try {
         const { data, error } = await supabaseClient.from('analytics_epoch_0').select('event_type');
-        if (error) return { arrivals: '?', intents: '?' };
+        if (error) {
+            console.error("[ANALYTICS] Fetch Error:", error.message, error.details);
+            return { arrivals: '?', intents: '?' };
+        }
+        console.log(`[ANALYTICS] Fetched ${data.length} records.`);
         const arrivals = data.filter(e => e.event_type === 'Arrival').length;
         const intents = data.filter(e => e.event_type === 'Intent Validated').length;
         return { arrivals, intents };
     } catch (err) {
+        console.error("[ANALYTICS] Fetch Exception:", err);
         return { arrivals: '?', intents: '?' };
     }
 }
