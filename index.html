@@ -642,7 +642,7 @@ const elFps = document.getElementById('fps-counter');
 
 // --- SOVEREIGN LEDGER (IndexedDB) ---
 let db;
-const CACHE_NAME = 'manipulus-epoch-0-v19'; // Renamed from DB_NAME
+const CACHE_NAME = 'manipulus-epoch-0-v20'; // Renamed from DB_NAME
 const STORE_NAME = 'sovereign_events';
 
 function initLedger() {
@@ -1070,14 +1070,17 @@ async function trackEvent(eventType) {
     }
     console.log(`[ANALYTICS] Attempting to track: ${eventType}...`);
     try {
-        const { data, error } = await supabaseClient.from('analytics_epoch_0').insert({ event_type: eventType });
+        const { error } = await supabaseClient
+            .from('analytics_epoch_0')
+            .insert([{ event_type: eventType }]);
+
         if (error) {
-            console.error(`[ANALYTICS] Supabase Error tracking ${eventType}:`, error);
+            console.error(`[ANALYTICS] Supabase Error tracking ${eventType}:`, error.message, error.details, error.hint);
         } else {
             console.log(`[ANALYTICS] Successfully tracked: ${eventType}`);
         }
     } catch (err) {
-        console.error(`[ANALYTICS] Network/Catch Error tracking ${eventType}:`, err);
+        console.error(`[ANALYTICS] Exception tracking ${eventType}:`, err);
     }
 }
 
