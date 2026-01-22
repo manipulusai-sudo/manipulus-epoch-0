@@ -484,46 +484,7 @@ canvas {
     }
     /* MANIPULUS DEBUG // CACHE RESET CORE LOGIC */
 
-// --- DEBUG TELEMETRY (GLOBAL) ---
-const elDebug = document.createElement('div');
-elDebug.style.position = 'absolute';
-elDebug.style.bottom = '10px';
-elDebug.style.left = '10px';
-elDebug.style.color = '#0f0';
-elDebug.style.fontFamily = 'monospace';
-elDebug.style.fontSize = '12px'; // Increased size
-elDebug.style.zIndex = '99999';
-elDebug.style.whiteSpace = 'pre';
-elDebug.style.background = 'rgba(0,0,0,0.8)';
-elDebug.style.padding = '8px';
-elDebug.style.border = '1px solid #0f0';
-elDebug.innerText = 'DEBUG INIT...';
-document.body.appendChild(elDebug);
 
-window.onerror = function (msg, url, line) {
-    elDebug.innerText += `\nCRITICAL: ${msg} @ L${line}`;
-    elDebug.style.borderColor = 'red';
-    elDebug.style.color = '#ff9999';
-    return false;
-};
-
-function updateDebug(vals) {
-    if (!elDebug) return;
-    const lines = Object.entries(vals).map(([k, v]) => `${k}:${v}`).join('\n');
-    // Keep errors visible
-    const current = elDebug.innerText;
-    if (current.includes('CRITICAL')) {
-        const errs = current.split('\n').filter(l => l.includes('CRITICAL') || l.includes('ERR')).join('\n');
-        elDebug.innerText = lines + '\n---\n' + errs;
-    } else {
-        elDebug.innerText = lines;
-    }
-}
-
-// Check Dependencies
-if (typeof handTrack === 'undefined') {
-    throw new Error("handTrack not loaded! Check CDN/Network.");
-}
 
 // --- CONFIG ---
 const CONFIG = {
@@ -879,15 +840,6 @@ function runDetection() {
 
         if (isVideo) requestAnimationFrame(runDetection);
 
-        // DEBUG UPDATE
-        updateDebug({
-            vDims: `${video.videoWidth}x${video.videoHeight}`,
-            cDims: `${canvas.width}x${canvas.height}`,
-            FPS: elFps.innerText,
-            Preds: predictions ? predictions.length : 0,
-            State: currentState,
-            vReady: video.readyState
-        });
     });
 }
 
