@@ -651,11 +651,11 @@ const elFps = document.getElementById('fps-counter');
 
 // --- SOVEREIGN LEDGER (IndexedDB) ---
 let db;
-const DB_NAME = 'manipulus_ledger_v1';
+const CACHE_NAME = 'manipulus-epoch-0-v19'; // Renamed from DB_NAME
 const STORE_NAME = 'sovereign_events';
 
 function initLedger() {
-    const request = indexedDB.open(DB_NAME, 1);
+    const request = indexedDB.open(CACHE_NAME, 1); // Changed to CACHE_NAME
     request.onupgradeneeded = (e) => {
         db = e.target.result;
         if (!db.objectStoreNames.contains(STORE_NAME)) {
@@ -1073,12 +1073,20 @@ function initSupabase() {
 }
 
 async function trackEvent(eventType) {
-    if (!supabaseClient) return;
+    if (!supabaseClient) {
+        console.warn(`[ANALYTICS] Cannot track ${eventType}: Supabase not initialized.`);
+        return;
+    }
+    console.log(`[ANALYTICS] Attempting to track: ${eventType}...`);
     try {
-        await supabaseClient.from('analytics_epoch_0').insert({ event_type: eventType });
-        console.log(`[ANALYTICS] Tracked: ${eventType}`);
+        const { data, error } = await supabaseClient.from('analytics_epoch_0').insert({ event_type: eventType });
+        if (error) {
+            console.error(`[ANALYTICS] Supabase Error tracking ${eventType}:`, error);
+        } else {
+            console.log(`[ANALYTICS] Successfully tracked: ${eventType}`);
+        }
     } catch (err) {
-        console.warn('[Analytics] Error:', err);
+        console.error(`[ANALYTICS] Network/Catch Error tracking ${eventType}:`, err);
     }
 }
 
