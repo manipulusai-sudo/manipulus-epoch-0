@@ -651,11 +651,11 @@ const elFps = document.getElementById('fps-counter');
 
 // --- SOVEREIGN LEDGER (IndexedDB) ---
 let db;
-const CACHE_NAME = 'manipulus-epoch-0-v20'; // Renamed from DB_NAME
+const DB_NAME = 'manipulus_ledger_epoch_0';
 const STORE_NAME = 'sovereign_events';
 
 function initLedger() {
-    const request = indexedDB.open(CACHE_NAME, 1); // Changed to CACHE_NAME
+    const request = indexedDB.open(DB_NAME, 1);
     request.onupgradeneeded = (e) => {
         db = e.target.result;
         if (!db.objectStoreNames.contains(STORE_NAME)) {
