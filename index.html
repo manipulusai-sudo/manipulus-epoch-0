@@ -755,7 +755,51 @@ function updateFSM(predictions) {
         return;
     }
 
-    const hand = predictions[0];
+    // --- FACE REJECTION LOGIC ---
+    // We scan for faces. If the best "hand" candidate overlaps a face, we reject it.
+    const faces = predictions.filter(p => p.label === 'face');
+    const hands = predictions.filter(p => ['open', 'closed', 'hand'].includes(p.label));
+
+    // Sort hands by score (descending)
+    hands.sort((a, b) => b.score - a.score);
+
+    let hand = null;
+
+    if (hands.length > 0) {
+        let candidate = hands[0];
+
+        // Check vs Faces
+        let rejected = false;
+        for (const face of faces) {
+            // Simple center-distance check
+            const [fx, fy, fw, fh] = face.bbox;
+            const [hx, hy, hw, hh] = candidate.bbox;
+
+            const fcx = fx + fw / 2;
+            const fcy = fy + fh / 2;
+            const hcx = hx + hw / 2;
+            const hcy = hy + hh / 2;
+
+            const dist = Math.sqrt(Math.pow(fcx - hcx, 2) + Math.pow(fcy - hcy, 2));
+            const faceRadius = Math.max(fw, fh) / 1.5; // Radius approx
+
+            if (dist < faceRadius) {
+                console.log("[Epoch 0] FACE REJECTED");
+                rejected = true;
+                break;
+            }
+        }
+
+        if (!rejected) {
+            hand = candidate;
+        }
+    }
+
+    if (!hand) {
+        if (currentState !== STATE.IDLE) transition(STATE.IDLE);
+        return;
+    }
+
     const score = hand.score;
     const [x, y, w, h] = hand.bbox;
 
@@ -851,9 +895,9 @@ function updateFSM(predictions) {
 
 // --- VISION LOOP ---
 const modelParams = {
-    flipHorizontal: true,   // flip e.g for video 
-    maxNumBoxes: 1,
-    iouThreshold: 0.5,
+    flipHorizontal: true,
+    maxNumBoxes: 4,         // Increased to see Face + Hand
+    iouThreshold: 0.6,      // Allowed overlap to detect Face-in-Hand scenarios
     scoreThreshold: 0.6,
 };
 
