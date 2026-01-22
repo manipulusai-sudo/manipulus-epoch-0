@@ -524,6 +524,15 @@ const CONFIG = {
     iouThreshold: 0.5
 };
 
+// --- FSM STATES ---
+const STATE = {
+    IDLE: 'IDLE',
+    OBSERVING: 'OBSERVING',
+    VALIDATING: 'VALIDATING',
+    TRIGGERED: 'TRIGGERED',
+    COOL_DOWN: 'COOL_DOWN'
+};
+
 let currentState = STATE.IDLE;
 let validateStartTime = 0;
 let triggeredTime = 0;
