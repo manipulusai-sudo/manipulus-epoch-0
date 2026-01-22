@@ -1,4 +1,4 @@
-const CACHE_NAME = 'manipulus-epoch-0-v9';
+const CACHE_NAME = 'manipulus-epoch-0-v11';
 const ASSETS = [
     './',
     './index.html',
