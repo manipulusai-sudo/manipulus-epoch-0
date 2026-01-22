@@ -14,7 +14,7 @@ Open the [Live Demo](https://manipulusai-sudo.github.io/manipulus-epoch-0/) and 
 To verify Sovereignty, disconnect from the internet. Manipulus is designed to function in **"Air-Gapped"** environments where data privacy is non-negotiable.
 
 ### 3. Validate Intent
-Perform a **Pinch** or **Grab** gesture (or raise Open Hand).
+Perform a **Raise Open Hand** or **Closed Fist** gesture.
 - **The Loading Ring**: You will see a visual validation ring fill around your hand.
 - **The Confirm**: Hold for 1 second. Once the ring is full, the intent is **"Triggered"** and logged to your local ledger.
 
