@@ -390,10 +390,108 @@ canvas {
 
 .full-width {
     width: 100%;
+}
+
+/* SOVEREIGN ANALYTICS TOGGLE */
+.analytics-toggle {
+    position: fixed;
+    bottom: 80px;
+    /* Above Footer */
+    right: 20px;
+    z-index: 100;
+}
+
+.analytics-btn {
+    background: rgba(0, 0, 0, 0.9);
+    border: 1px solid #333;
+    color: #666;
+    padding: 8px 14px;
+    cursor: pointer;
+    font-family: var(--font-stack);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    backdrop-filter: blur(4px);
+}
+
+.analytics-btn:hover {
+    border-color: #444;
+    color: #888;
+}
+
+.analytics-btn.active {
+    border-color: var(--state-triggered);
+    color: var(--state-triggered);
+    box-shadow: 0 0 15px rgba(0, 255, 0, 0.2);
+}
+
+.analytics-dot {
+    width: 6px;
+    height: 6px;
+    background: #333;
+    border-radius: 50%;
+    transition: background 0.3s;
+}
+
+.analytics-btn.active .analytics-dot {
+    background: var(--state-triggered);
+    box-shadow: 0 0 8px var(--state-triggered);
+}
+
+.analytics-panel {
+    position: absolute;
+    bottom: 40px;
+    right: 0;
+    background: rgba(10, 10, 10, 0.95);
+    border: 1px solid #333;
+    padding: 16px 20px;
+    min-width: 200px;
+    display: none;
+    flex-direction: column;
+    gap: 12px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+}
+
+.analytics-panel.open {
+    display: flex;
+}
+
+.analytics-header {
+    font-size: 0.65rem;
+    color: #444;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    border-bottom: 1px solid #1a1a1a;
+    padding-bottom: 8px;
+}
+
+.analytics-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.analytics-label {
+    font-size: 0.75rem;
+    color: #666;
+}
+
+.analytics-count {
+    font-size: 1rem;
+    color: var(--state-triggered);
+    font-weight: bold;
+    font-family: monospace;
 }</style>
     <link rel="manifest" href="manifest.json">
     <!-- Handtrack.js (Will be cached by Service Worker) -->
     <script src="https://cdn.jsdelivr.net/npm/handtrackjs/dist/handtrack.min.js"></script>
+    <!-- Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 
 <body>
@@ -442,6 +540,25 @@ canvas {
                 </div>
             </div>
         </main>
+
+        <!-- SOVEREIGN ANALYTICS TOGGLE -->
+        <div class="analytics-toggle">
+            <div class="analytics-panel" id="analytics-panel">
+                <div class="analytics-header">Sovereign Analytics</div>
+                <div class="analytics-row">
+                    <span class="analytics-label">Arrivals</span>
+                    <span class="analytics-count" id="count-arrivals">—</span>
+                </div>
+                <div class="analytics-row">
+                    <span class="analytics-label">Intents Validated</span>
+                    <span class="analytics-count" id="count-intents">—</span>
+                </div>
+            </div>
+            <button class="analytics-btn" id="analytics-btn">
+                <span class="analytics-dot"></span>
+                Analytics
+            </button>
+        </div>
 
         <!-- FOOTER / LEDGER -->
         <footer class="hud-footer">
@@ -616,7 +733,8 @@ function transition(newState) {
         elDetail.innerText = "KINETIC SIGNATURE VERIFIED";
         elState.style.color = "var(--state-triggered)";
         elStatusDot.classList.add('active');
-        logEvent("KINETIC_TRIGGER", 0.99); // Dummy conf for now
+        logEvent("KINETIC_TRIGGER", 0.99);
+        trackEvent('Intent Validated'); // ANALYTICS
 
         triggeredTime = Date.now();
         setTimeout(() => transition(STATE.COOL_DOWN), 100);
@@ -884,6 +1002,68 @@ function updateLedgerUI() {
         `).join('');
     });
 }
+
+// --- SOVEREIGN ANALYTICS (SUPABASE) ---
+const SUPABASE_URL = 'https://qhppvasesesyobvmfpbp.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFocHB2YXNlc2VzeW9idm1mcGJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg5MDg0OTIsImV4cCI6MjA4NDQ4NDQ5Mn0.TOiynPYDsgghPTu_3pMG9pwqnag4oNAtjsJTeaqkLKs';
+
+let supabaseClient = null;
+
+function initSupabase() {
+    if (window.supabase && window.supabase.createClient) {
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        console.log('[ANALYTICS] Supabase connected.');
+        trackEvent('Arrival');
+    } else {
+        setTimeout(initSupabase, 100);
+    }
+}
+
+async function trackEvent(eventType) {
+    if (!supabaseClient) return;
+    try {
+        await supabaseClient.from('analytics_events').insert({ event_type: eventType });
+        console.log(`[ANALYTICS] Tracked: ${eventType}`);
+    } catch (err) {
+        console.warn('[Analytics] Error:', err);
+    }
+}
+
+async function fetchAnalyticsCounts() {
+    if (!supabaseClient) return { arrivals: '?', intents: '?' };
+    try {
+        const { data, error } = await supabaseClient.from('analytics_events').select('event_type');
+        if (error) return { arrivals: '?', intents: '?' };
+        const arrivals = data.filter(e => e.event_type === 'Arrival').length;
+        const intents = data.filter(e => e.event_type === 'Intent Validated').length;
+        return { arrivals, intents };
+    } catch (err) {
+        return { arrivals: '?', intents: '?' };
+    }
+}
+
+// Toggle Analytics Panel
+window.toggleAnalyticsPanel = async function () {
+    const panel = document.getElementById('analytics-panel');
+    const btn = document.getElementById('analytics-btn');
+    const isOpen = panel.classList.contains('open');
+
+    if (isOpen) {
+        panel.classList.remove('open');
+        btn.classList.remove('active');
+    } else {
+        panel.classList.add('open');
+        btn.classList.add('active');
+        document.getElementById('count-arrivals').textContent = '...';
+        document.getElementById('count-intents').textContent = '...';
+        const counts = await fetchAnalyticsCounts();
+        document.getElementById('count-arrivals').textContent = counts.arrivals;
+        document.getElementById('count-intents').textContent = counts.intents;
+    }
+};
+
+document.getElementById('analytics-btn').addEventListener('click', window.toggleAnalyticsPanel);
+initSupabase();
 
 
 
