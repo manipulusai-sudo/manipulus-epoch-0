@@ -21,10 +21,6 @@ Perform a **Pinch** or **Grab** gesture (or raise Open Hand).
 ## 📜 Sovereign Audit
 Manipulus does not use the cloud. All intent logs are stored in your browser's **IndexedDB**.
 
-Use the **"Export Sovereign Audit"** button to download a JSON file of your interaction history.
-
-*This is your Physical Proof of Work.*
-
 ## 🏗️ Humanoid Interoperability
 Manipulus Epoch 0 is designed to export validated intent via a standardized JSON schema. This allows it to act as the Safety Interlock for:
 - **Tesla Optimus / Figure AI** (Command Validation)
