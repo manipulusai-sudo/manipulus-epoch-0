@@ -1,9 +1,7 @@
-const CACHE_NAME = 'manipulus-epoch-0-v8';
+const CACHE_NAME = 'manipulus-epoch-0-v9';
 const ASSETS = [
     './',
     './index.html',
-    './style.css',
-    './script.js',
     './manifest.json',
     'https://cdn.jsdelivr.net/npm/handtrackjs/dist/handtrack.min.js'
 ];
