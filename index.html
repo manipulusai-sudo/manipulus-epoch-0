@@ -5,7 +5,392 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>MANIPULUS: LAYER 0 KINETIC FIREWALL</title>
-    <style>:root { --bg-color: #050505; --panel-bg: rgba(10, 10, 10, 0.9); --grid-line: rgba(50, 255, 50, 0.05); --text-primary: #e0e0e0; --text-dim: #555;  --state-idle: #555555; --state-observing: #ffaa00;  --state-validating: #ffee00;  --state-triggered: #00ff00;  --state-error: #ff3333; --font-stack: 'Courier New', Courier, monospace; } * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-tap-highlight-color: transparent; } body { background-color: var(--bg-color); color: var(--text-primary); font-family: var(--font-stack); height: 100vh; overflow: hidden; display: flex; flex-direction: column; background-image: linear-gradient(var(--grid-line) 1px, transparent 1px), linear-gradient(90deg, var(--grid-line) 1px, transparent 1px); background-size: 40px 40px; }  .hud-container { display: flex; flex-direction: column; height: 100%; } .hud-header { background: rgba(0, 0, 0, 0.8); border-bottom: 1px solid #333; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; backdrop-filter: blur(4px); z-index: 10; } h1 { font-size: 1.1rem; letter-spacing: 2px; font-weight: normal; } .sub-label { font-size: 0.6rem; color: var(--text-dim); letter-spacing: 1px; } .status-indicator { font-size: 0.7rem; color: var(--state-idle); display: flex; align-items: center; gap: 8px; border: 1px solid #333; padding: 4px 8px; } .status-dot { width: 6px; height: 6px; background: var(--state-idle); border-radius: 50%; } .status-dot.active { background: var(--state-triggered); box-shadow: 0 0 8px var(--state-triggered); }  .viewport { flex: 1; position: relative; background: #000; overflow: hidden; display: flex; justify-content: center; align-items: center; } .sensor-feed { width: 100%; height: 100%; position: relative; display: flex; justify-content: center; align-items: center; }  video { position: absolute;  width: 100px; height: 100px; opacity: 0.01; z-index: -1; pointer-events: none; } #video { opacity: 0; } canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%;         }  .fsm-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; } .reticle { position: absolute; width: 100px; height: 100px; border: 1px solid rgba(255, 255, 255, 0.1); transform: translate(-50%, -50%);  transition: width 0.1s, height 0.1s, border-color 0.2s; } .reticle.hidden { opacity: 0; } .reticle-corner { position: absolute; width: 10px; height: 10px; border-color: var(--state-idle); border-style: solid; transition: border-color 0.2s; } .tl { top: -1px; left: -1px; border-width: 2px 0 0 2px; } .tr { top: -1px; right: -1px; border-width: 2px 2px 0 0; } .bl { bottom: -1px; left: -1px; border-width: 0 0 2px 2px; } .br { bottom: -1px; right: -1px; border-width: 0 2px 2px 0; }  .reticle[data-state="OBSERVING"] .reticle-corner { border-color: var(--state-observing); } .reticle[data-state="VALIDATING"] .reticle-corner { border-color: var(--state-validating); } .reticle[data-state="TRIGGERED"] .reticle-corner { border-color: var(--state-triggered); }  .validation-ring { position: absolute; top: 0; left: 0; width: 100%; height: 100%; transform: rotate(-90deg); } .ring-bg { fill: none; stroke: rgba(255, 255, 255, 0.1); stroke-width: 4; } .ring-progress { fill: none; stroke: var(--state-validating); stroke-width: 4; stroke-dasharray: 283;  stroke-dashoffset: 283; }  .center-status { position: absolute; bottom: 20%; left: 50%; transform: translateX(-50%); text-align: center; width: 100%; } .fsm-state { font-size: 1.5rem; font-weight: bold; color: var(--state-idle); text-shadow: 0 0 10px rgba(0, 0, 0, 0.5); letter-spacing: 4px; margin-bottom: 5px; } .fsm-detail { font-size: 0.8rem; color: var(--text-dim); letter-spacing: 2px; }  .hud-footer { background: #000; border-top: 1px solid #333; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; z-index: 10; } .hud-btn { background: transparent; border: 1px solid var(--state-triggered); color: var(--state-triggered); padding: 10px 20px; font-family: var(--font-stack); font-size: 0.9rem; cursor: pointer; transition: all 0.2s; text-transform: uppercase; letter-spacing: 1px; } .hud-btn:hover { background: rgba(0, 255, 0, 0.1); box-shadow: 0 0 10px var(--state-triggered); } .hud-btn.dim { border-color: #555; color: #888; } .hud-btn.dim:hover { border-color: #888; color: #bbb; } .system-readout { font-size: 0.7rem; color: #555; display: flex; gap: 15px; }  .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(5px); z-index: 100; display: flex; justify-content: center; align-items: center; } .modal.hidden { display: none; } .modal-content { background: #111; border: 1px solid #333; width: 90%; max-width: 600px; height: 80%; display: flex; flex-direction: column; padding: 20px; box-shadow: 0 0 30px #000; } .modal-header { display: flex; justify-content: space-between; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 10px; } .close-btn { background: none; border: none; color: #fff; font-size: 1.2rem; cursor: pointer; } .ledger-list { flex: 1; overflow-y: auto; font-size: 0.8rem; color: #aaa; border: 1px solid #222; padding: 10px; margin-bottom: 20px; font-family: monospace; } .ledger-item { border-bottom: 1px solid #222; padding: 8px 0; display: flex; justify-content: space-between; } .ledger-hash { color: var(--text-dim); font-size: 0.7rem; } .full-width { width: 100%; }</style>
+    <style>/* MANIPULUS EPOCH 0 STYLE */
+:root {
+    --bg-color: #050505;
+    --panel-bg: rgba(10, 10, 10, 0.9);
+    --grid-line: rgba(50, 255, 50, 0.05);
+    --text-primary: #e0e0e0;
+    --text-dim: #555;
+
+    /* STATES */
+    --state-idle: #555555;
+    --state-observing: #ffaa00;
+    /* Orange */
+    --state-validating: #ffee00;
+    /* Yellow */
+    --state-triggered: #00ff00;
+    /* Green */
+    --state-error: #ff3333;
+
+    --font-stack: 'Courier New', Courier, monospace;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-primary);
+    font-family: var(--font-stack);
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    background-image:
+        linear-gradient(var(--grid-line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 40px 40px;
+}
+
+/* HUD LAYOUT */
+.hud-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.hud-header {
+    background: rgba(0, 0, 0, 0.8);
+    border-bottom: 1px solid #333;
+    padding: 10px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    backdrop-filter: blur(4px);
+    z-index: 10;
+}
+
+h1 {
+    font-size: 1.1rem;
+    letter-spacing: 2px;
+    font-weight: normal;
+}
+
+.sub-label {
+    font-size: 0.6rem;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+}
+
+.status-indicator {
+    font-size: 0.7rem;
+    color: var(--state-idle);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid #333;
+    padding: 4px 8px;
+}
+
+.status-dot {
+    width: 6px;
+    height: 6px;
+    background: var(--state-idle);
+    border-radius: 50%;
+}
+
+.status-dot.active {
+    background: var(--state-triggered);
+    box-shadow: 0 0 8px var(--state-triggered);
+}
+
+/* VIEWPORT */
+.viewport {
+    flex: 1;
+    position: relative;
+    background: #000;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.sensor-feed {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Video is hidden, we render to canvas */
+video {
+    position: absolute;
+    /* Keep minimal visibility to prevent browser optimization stopping playback */
+    width: 100px;
+    height: 100px;
+    opacity: 0.01;
+    z-index: -1;
+    pointer-events: none;
+}
+
+#video {
+    opacity: 0;
+}
+
+canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    /* We handle mirroring in JS draw logic, OR we mirror canvas here? */
+    /* If we flip canvas here, then our drawing logic needs to be normal. */
+    /* JS uses scale(-1, 1). So duplicate flush? */
+    /* Let's NOT flip canvas via CSS if JS handles it. */
+    /* But previously we flipped scaleX(-1). */
+    /* Our JS logic assumes we draw mirrored. */
+    /* If canvas is normal, user sees mirrored. */
+    /* So remove local transform. */
+}
+
+/* FSM OVERLAY & RETICLE */
+.fsm-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 5;
+}
+
+.reticle {
+    position: absolute;
+    width: 100px;
+    height: 100px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transform: translate(-50%, -50%);
+    /* Centered on coord */
+    transition: width 0.1s, height 0.1s, border-color 0.2s;
+}
+
+.reticle.hidden {
+    opacity: 0;
+}
+
+.reticle-corner {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    border-color: var(--state-idle);
+    border-style: solid;
+    transition: border-color 0.2s;
+}
+
+.tl {
+    top: -1px;
+    left: -1px;
+    border-width: 2px 0 0 2px;
+}
+
+.tr {
+    top: -1px;
+    right: -1px;
+    border-width: 2px 2px 0 0;
+}
+
+.bl {
+    bottom: -1px;
+    left: -1px;
+    border-width: 0 0 2px 2px;
+}
+
+.br {
+    bottom: -1px;
+    right: -1px;
+    border-width: 0 2px 2px 0;
+}
+
+/* STATE STYLES */
+.reticle[data-state="OBSERVING"] .reticle-corner {
+    border-color: var(--state-observing);
+}
+
+.reticle[data-state="VALIDATING"] .reticle-corner {
+    border-color: var(--state-validating);
+}
+
+.reticle[data-state="TRIGGERED"] .reticle-corner {
+    border-color: var(--state-triggered);
+}
+
+/* VALIDATION RING */
+.validation-ring {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+}
+
+.ring-bg {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.1);
+    stroke-width: 4;
+}
+
+.ring-progress {
+    fill: none;
+    stroke: var(--state-validating);
+    stroke-width: 4;
+    stroke-dasharray: 283;
+    /* 2 * PI * 45 */
+    stroke-dashoffset: 283;
+}
+
+/* CENTER TEXT */
+.center-status {
+    position: absolute;
+    bottom: 20%;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    width: 100%;
+}
+
+.fsm-state {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--state-idle);
+    text-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    letter-spacing: 4px;
+    margin-bottom: 5px;
+}
+
+.fsm-detail {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+}
+
+/* FOOTER */
+.hud-footer {
+    background: #000;
+    border-top: 1px solid #333;
+    padding: 10px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10;
+}
+
+.hud-btn {
+    background: transparent;
+    border: 1px solid var(--state-triggered);
+    color: var(--state-triggered);
+    padding: 10px 20px;
+    font-family: var(--font-stack);
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.hud-btn:hover {
+    background: rgba(0, 255, 0, 0.1);
+    box-shadow: 0 0 10px var(--state-triggered);
+}
+
+.hud-btn.dim {
+    border-color: #555;
+    color: #888;
+}
+
+.hud-btn.dim:hover {
+    border-color: #888;
+    color: #bbb;
+}
+
+.system-readout {
+    font-size: 0.7rem;
+    color: #555;
+    display: flex;
+    gap: 15px;
+}
+
+/* MODAL */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(5px);
+    z-index: 100;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal.hidden {
+    display: none;
+}
+
+.modal-content {
+    background: #111;
+    border: 1px solid #333;
+    width: 90%;
+    max-width: 600px;
+    height: 80%;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    box-shadow: 0 0 30px #000;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #333;
+    padding-bottom: 10px;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 1.2rem;
+    cursor: pointer;
+}
+
+.ledger-list {
+    flex: 1;
+    overflow-y: auto;
+    font-size: 0.8rem;
+    color: #aaa;
+    border: 1px solid #222;
+    padding: 10px;
+    margin-bottom: 20px;
+    font-family: monospace;
+}
+
+.ledger-item {
+    border-bottom: 1px solid #222;
+    padding: 8px 0;
+    display: flex;
+    justify-content: space-between;
+}
+
+.ledger-hash {
+    color: var(--text-dim);
+    font-size: 0.7rem;
+}
+
+.full-width {
+    width: 100%;
+}</style>
     <link rel="manifest" href="manifest.json">
     <!-- Handtrack.js (Will be cached by Service Worker) -->
     <script src="https://cdn.jsdelivr.net/npm/handtrackjs/dist/handtrack.min.js"></script>
@@ -88,7 +473,459 @@
         </div>
     </div>
 
-    <script>// --- DEBUG TELEMETRY (GLOBAL) --- const elDebug = document.createElement('div'); elDebug.style.position = 'absolute'; elDebug.style.bottom = '10px'; elDebug.style.left = '10px'; elDebug.style.color = '#0f0'; elDebug.style.fontFamily = 'monospace'; elDebug.style.fontSize = '12px'; // Increased size elDebug.style.zIndex = '99999'; elDebug.style.whiteSpace = 'pre'; elDebug.style.background = 'rgba(0,0,0,0.8)'; elDebug.style.padding = '8px'; elDebug.style.border = '1px solid #0f0'; elDebug.innerText = 'DEBUG INIT...'; document.body.appendChild(elDebug); window.onerror = function (msg, url, line) { elDebug.innerText += `\nCRITICAL: ${msg} @ L${line}`; elDebug.style.borderColor = 'red'; elDebug.style.color = '#ff9999'; return false; }; function updateDebug(vals) { if (!elDebug) return; const lines = Object.entries(vals).map(([k, v]) => `${k}:${v}`).join('\n'); // Keep errors visible const current = elDebug.innerText; if (current.includes('CRITICAL')) { const errs = current.split('\n').filter(l => l.includes('CRITICAL') || l.includes('ERR')).join('\n'); elDebug.innerText = lines + '\n---\n' + errs; } else { elDebug.innerText = lines; } } // Check Dependencies if (typeof handTrack === 'undefined') { throw new Error("handTrack not loaded! Check CDN/Network."); } // --- _C --- const _C = { validationTime: 800, // ms coolDownTime: 2000, minScore: 0.7, iouThreshold: 0.5 }; let _s = _S.IDLE; let _vsw = 0; let _tt = 0; let model = null; let _iv = false; // DOM Elements const video = document.getElementById('video'); const canvas = document.getElementById('output'); const ctx = canvas.getContext('2d'); // Canvas Auto-Resize function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; } window.addEventListener('resize', resizeCanvas); resizeCanvas(); const elReticle = document.getElementById('reticle'); const elRing = document.getElementById('ring-progress'); const elState = document.getElementById('fsm-state'); const elDetail = document.getElementById('fsm-detail'); const elStatusDot = document.getElementById('connection-dot'); const elStatusText = document.getElementById('connection-text'); const btnToggle = document.getElementById('btn-toggle-cam'); const elFps = document.getElementById('fps-counter'); // --- SOVEREIGN LEDGER (IndexedDB) --- let _x; const _dn = 'manipulus_ledger_v1'; const _sn = 'sovereign_events'; function _il() { const request = indexedDB.open(_dn, 1); request.onupgradeneeded = (e) => { _x = e.target.result; if (!_x.objectStoreNames.contains(_sn)) { _x.createObjectStore(_sn, { keyPath: 'id' }); } }; request.onsuccess = (e) => { _x = e.target.result; console.log("SOVEREIGN LEDGER: MOUNTED"); updateLedgerUI(); }; request.onerror = (e) => { console.error("LEDGER ERROR", e); }; } function _le(type, confidence) { if (!_x) return; const tx = _x.transaction([_sn], 'readwrite'); const store = tx.objectStore(_sn); // Generate simple hash const noise = Math.random().toString(36).substring(7); const hash = btoa(`${Date.now()}-${type}-${noise}`).substring(0, 16); const event = { id: Date.now(), timestamp: new Date().toISOString(), type: type, confidence: confidence.toFixed(4), hash: hash }; store.add(event); updateLedgerUI(); } function _gl(callback) { if (!_x) return; const tx = _x.transaction([_sn], 'readonly'); const store = tx.objectStore(_sn); const request = store.getAll(); request.onsuccess = () => { // Sort DESC const res = request.result.sort((a, b) => b.id - a.id); callback(res); }; } // --- FSM ENGINE --- function _t(newState) { if (_s === newState) return; // Exit Logic if (_s === _S.VALIDATING) { // Reset ring if we leave validating without triggering if (newState !== _S.TRIGGERED) { elRing.style.strokeDashoffset = 283; } } _s = newState; elReticle.setAttribute('data-state', newState); // Entry Logic if (newState === _S.IDLE) { elState.innerText = "SYSTEM IDLE"; elDetail.innerText = "WAITING FOR KINETIC INPUT"; elState.style.color = "var(--state-idle)"; elReticle.classList.add('hidden'); } else if (newState === _S.OBSERVING) { elState.innerText = "OBSERVING"; elDetail.innerText = "TRACKING TARGET VECTOR"; elState.style.color = "var(--state-observing)"; elReticle.classList.remove('hidden'); } else if (newState === _S.VALIDATING) { elState.innerText = "VALIDATING"; elDetail.innerText = "HOLD POSE TO UNLOCK"; elState.style.color = "var(--state-validating)"; _vsw = Date.now(); } else if (newState === _S.TRIGGERED) { elState.innerText = "ACCESS GRANTED"; elDetail.innerText = "KINETIC SIGNATURE VERIFIED"; elState.style.color = "var(--state-triggered)"; elStatusDot.classList.add('active'); _le("KINETIC_TRIGGER", 0.99); // Dummy conf for now _tt = Date.now(); setTimeout(() => _t(_S.COOL_DOWN), 100); } else if (newState === _S.COOL_DOWN) { elReticle.classList.add('hidden'); elStatusDot.classList.remove('active'); // Wait then reset setTimeout(() => _t(_S.IDLE), _C.coolDownTime); } } function _u(predictions) { if (_s === _S.COOL_DOWN || _s === _S.TRIGGERED) return; // No target? if (!predictions || predictions.length === 0) { if (_s !== _S.IDLE) _t(_S.IDLE); return; } const hand = predictions[0]; const score = hand.score; const [x, y, w, h] = hand.bbox; // We rely on renderVideoToCanvas to have prepared proper visual dimensions // We recreate them here for mapping. This is redundant but safe. // Or we could store them globally. Let's recalculate. const vW = video.videoWidth; const vH = video.videoHeight; const cw = canvas.width; const ch = canvas.height; // We need "offX", "offY", "visualW", "visualH" const rVid = vW / vH; const rCan = cw / ch; let visualW, visualH, offX, offY; if (rCan > rVid) { // Canvas wider -> Pillarbox visualH = ch; visualW = ch * rVid; offY = 0; offX = (cw - visualW) / 2; } else { // Canvas taller -> Letterbox visualW = cw; visualH = cw / rVid; offX = 0; offY = (ch - visualH) / 2; } // Normalized Hand Coords (0-1) in Source Video const cx = x + w / 2; const cy = y + h / 2; const nx = cx / vW; const ny = cy / vH; // Screen Mapping (Canvas Coordinates) // We draw mirrored. // If nx=0 (left of video), we draw it at RIGHT of canvas if mirrored? // Wait. ctx.scale(-1, 1). // drawImage(img, 0, 0) draws at top-right (x=0 in flipped system). // So visual left edge of source = visual right edge of output? // User MIRROR expectation: // Move REAL RIGHT hand (Screen Right). // Camera sees LEFT side of frame. // nx ~ 0. // We want reticle at Screen Right. // Screen X = offX + ((1-nx) * visualW) ?? // If nx=0, screenX = offX + visualW. (Right side). // Yes. ((1-nx) * visualW) gives the x-coord from left edge for mirrored. const screenX = offX + ((1 - nx) * visualW); const screenY = offY + (ny * visualH); elReticle.style.left = `${screenX}px`; elReticle.style.top = `${screenY}px`; // State Logic if (_s === _S.IDLE) { if (score > _C.minScore) _t(_S.OBSERVING); } else if (_s === _S.OBSERVING) { if (score < _C.minScore - 0.1) _t(_S.IDLE); if (hand.label !== 'face') { _t(_S.VALIDATING); } } else if (_s === _S.VALIDATING) { if (score < _C.minScore - 0.1 || hand.label === 'face') { _t(_S.OBSERVING); return; } // Update Progress const elapsed = Date.now() - _vsw; const progress = Math.min(elapsed / _C.validationTime, 1); // 283 is circle circumference const offset = 283 - (283 * progress); elRing.style.strokeDashoffset = offset; if (progress >= 1.0) { _t(_S.TRIGGERED); } } } // --- VISION LOOP --- const _mp = { flipHorizontal: true, // flip e.g for video maxNumBoxes: 1, iouThreshold: 0.5, scoreThreshold: 0.6, }; function _is() { handTrack.startVideo(video).then(status => { if (status) { _iv = true; btnToggle.innerText = "TERMINATE SENSOR"; _rd(); } else { elState.innerText = "SENSOR_FAIL"; } }); } function _ks() { handTrack.stopVideo(video); _iv = false; btnToggle.innerText = "INIT SENSOR"; _t(_S.IDLE); } function renderVideoToCanvas() { const vW = video.videoWidth; const vH = video.videoHeight; if (!vW || !vH) return; const cw = canvas.width; const ch = canvas.height; const rVid = vW / vH; const rCan = cw / ch; let w, h, x, y; if (rCan > rVid) { h = ch; w = ch * rVid; y = 0; x = (cw - w) / 2; } else { w = cw; h = cw / rVid; x = 0; y = (ch - h) / 2; } // Clear ctx.clearRect(0, 0, cw, ch); // Draw Mirrored ctx.save(); ctx.translate(cw, 0); ctx.scale(-1, 1); // Draw centered // In flipped context, origin is right. Positive X goes left. // If we want to draw at visual 'x' (from left edge), that is 'cw - x' from right? // No, standard flip: x becomes cw-x. // We want the IMAGE to be flipped. // drawImage(video, x, y, w, h). // This draws image normally at that rect? // If we flipped the context, the image is drawn flipped. // But WHERE is it drawn? // If we effectively want to draw at 'x' from Left Edge (visual), // In flipped context, that rect corresponds to drawing at 'x' from origin? // Let's test: x=0. Draw at 0. Result is at Right edge? // Yes. // If we want to center the MIRRORED image. // The "pillarbox" means we want black bars. // The image should be in the center. // Visually center = x .. x+w. // In flipped context, x .. x+w is same numeric range, but results in visual cw-x .. cw-(x+w)? // Basically, we draw at 'x, y' in flipped context. // It will appear at 'cw-(x+w)'? No. // Symmetrical centering means x = (cw-w)/2. // Drawing at x in flipped context puts it at same offset from right. // (cw - w)/2 from right IS (cw-w)/2 from left if symmetrical. // So YES, we draw at x, y, w, h. ctx.drawImage(video, 0, 0, vW, vH, x, y, w, h); ctx.restore(); } let lastFrame = 0; function _rd() { model._d(video).then(predictions => { renderVideoToCanvas(); _u(predictions); const now = Date.now(); const delta = now - lastFrame; lastFrame = now; elFps.innerText = Math.round(1000 / delta); if (_iv) requestAnimationFrame(_rd); // DEBUG UPDATE updateDebug({ vDims: `${video.videoWidth}x${video.videoHeight}`, cDims: `${canvas.width}x${canvas.height}`, FPS: elFps.innerText, Preds: predictions ? predictions.length : 0, State: _s, vReady: video.readyState }); }); } // --- INIT --- btnToggle.addEventListener('click', () => { if (!_iv) _is(); else _ks(); }); // Load Model handTrack.load(_mp).then(lmodel => { model = lmodel; elState.innerText = "SENSOR ONLINE"; elDetail.innerText = "AWAITING ACTIVATION"; elState.style.color = "#555"; }); // Init Ledger _il(); // Ledger UI const modal = document.getElementById('ledger-modal'); document.getElementById('btn-view-ledger').addEventListener('click', () => { modal.classList.remove('hidden'); updateLedgerUI(); }); document.getElementById('btn-close-ledger').addEventListener('click', () => modal.classList.add('hidden')); function updateLedgerUI() { const list = document.getElementById('ledger-list'); _gl(events => { if (!events || events.length === 0) { list.innerHTML = '<div class="ledger-empty">NO KINETIC SIGNATURES RECORDED</div>'; return; } list.innerHTML = events.map(e => ` <div class="ledger-item"> <div> <div style="color:var(--state-triggered)">${e.type}</div> <div class="ledger-hash">HASH: ${e.hash}</div> </div> <div style="text-align:right"> <div>${e.timestamp.split('T')[1].split('.')[0]}</div> <div style="color:#666">CONF: ${e.confidence}</div> </div> </div> `).join(''); }); } // ... existing code ...</script>
+    <script>/* MANIPULUS EPOCH 0 CORE LOGIC */
+
+// --- DEBUG TELEMETRY (GLOBAL) ---
+const elDebug = document.createElement('div');
+elDebug.style.position = 'absolute';
+elDebug.style.bottom = '10px';
+elDebug.style.left = '10px';
+elDebug.style.color = '#0f0';
+elDebug.style.fontFamily = 'monospace';
+elDebug.style.fontSize = '12px'; // Increased size
+elDebug.style.zIndex = '99999';
+elDebug.style.whiteSpace = 'pre';
+elDebug.style.background = 'rgba(0,0,0,0.8)';
+elDebug.style.padding = '8px';
+elDebug.style.border = '1px solid #0f0';
+elDebug.innerText = 'DEBUG INIT...';
+document.body.appendChild(elDebug);
+
+window.onerror = function (msg, url, line) {
+    elDebug.innerText += `\nCRITICAL: ${msg} @ L${line}`;
+    elDebug.style.borderColor = 'red';
+    elDebug.style.color = '#ff9999';
+    return false;
+};
+
+function updateDebug(vals) {
+    if (!elDebug) return;
+    const lines = Object.entries(vals).map(([k, v]) => `${k}:${v}`).join('\n');
+    // Keep errors visible
+    const current = elDebug.innerText;
+    if (current.includes('CRITICAL')) {
+        const errs = current.split('\n').filter(l => l.includes('CRITICAL') || l.includes('ERR')).join('\n');
+        elDebug.innerText = lines + '\n---\n' + errs;
+    } else {
+        elDebug.innerText = lines;
+    }
+}
+
+// Check Dependencies
+if (typeof handTrack === 'undefined') {
+    throw new Error("handTrack not loaded! Check CDN/Network.");
+}
+
+// --- CONFIG ---
+const CONFIG = {
+    validationTime: 800, // ms
+    coolDownTime: 2000,
+    minScore: 0.7,
+    iouThreshold: 0.5
+};
+
+let currentState = STATE.IDLE;
+let validateStartTime = 0;
+let triggeredTime = 0;
+let model = null;
+let isVideo = false;
+
+
+// DOM Elements
+const video = document.getElementById('video');
+const canvas = document.getElementById('output');
+const ctx = canvas.getContext('2d');
+
+// Canvas Auto-Resize
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+const elReticle = document.getElementById('reticle');
+const elRing = document.getElementById('ring-progress');
+const elState = document.getElementById('fsm-state');
+const elDetail = document.getElementById('fsm-detail');
+const elStatusDot = document.getElementById('connection-dot');
+const elStatusText = document.getElementById('connection-text');
+const btnToggle = document.getElementById('btn-toggle-cam');
+const elFps = document.getElementById('fps-counter');
+
+// --- SOVEREIGN LEDGER (IndexedDB) ---
+let db;
+const DB_NAME = 'manipulus_ledger_v1';
+const STORE_NAME = 'sovereign_events';
+
+function initLedger() {
+    const request = indexedDB.open(DB_NAME, 1);
+    request.onupgradeneeded = (e) => {
+        db = e.target.result;
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+            db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+        }
+    };
+    request.onsuccess = (e) => {
+        db = e.target.result;
+        console.log("SOVEREIGN LEDGER: MOUNTED");
+        updateLedgerUI();
+    };
+    request.onerror = (e) => {
+        console.error("LEDGER ERROR", e);
+    };
+}
+
+function logEvent(type, confidence) {
+    if (!db) return;
+    const tx = db.transaction([STORE_NAME], 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+
+    // Generate simple hash
+    const noise = Math.random().toString(36).substring(7);
+    const hash = btoa(`${Date.now()}-${type}-${noise}`).substring(0, 16);
+
+    const event = {
+        id: Date.now(),
+        timestamp: new Date().toISOString(),
+        type: type,
+        confidence: confidence.toFixed(4),
+        hash: hash
+    };
+
+    store.add(event);
+    updateLedgerUI();
+}
+
+function getLedger(callback) {
+    if (!db) return;
+    const tx = db.transaction([STORE_NAME], 'readonly');
+    const store = tx.objectStore(STORE_NAME);
+    const request = store.getAll();
+    request.onsuccess = () => {
+        // Sort DESC
+        const res = request.result.sort((a, b) => b.id - a.id);
+        callback(res);
+    };
+}
+
+// --- FSM ENGINE ---
+
+function transition(newState) {
+    if (currentState === newState) return;
+
+    // Exit Logic
+    if (currentState === STATE.VALIDATING) {
+        // Reset ring if we leave validating without triggering
+        if (newState !== STATE.TRIGGERED) {
+            elRing.style.strokeDashoffset = 283;
+        }
+    }
+
+    currentState = newState;
+    elReticle.setAttribute('data-state', newState);
+
+    // Entry Logic
+    if (newState === STATE.IDLE) {
+        elState.innerText = "SYSTEM IDLE";
+        elDetail.innerText = "WAITING FOR KINETIC INPUT";
+        elState.style.color = "var(--state-idle)";
+        elReticle.classList.add('hidden');
+    } else if (newState === STATE.OBSERVING) {
+        elState.innerText = "OBSERVING";
+        elDetail.innerText = "TRACKING TARGET VECTOR";
+        elState.style.color = "var(--state-observing)";
+        elReticle.classList.remove('hidden');
+    } else if (newState === STATE.VALIDATING) {
+        elState.innerText = "VALIDATING";
+        elDetail.innerText = "HOLD POSE TO UNLOCK";
+        elState.style.color = "var(--state-validating)";
+        validateStartTime = Date.now();
+    } else if (newState === STATE.TRIGGERED) {
+        elState.innerText = "ACCESS GRANTED";
+        elDetail.innerText = "KINETIC SIGNATURE VERIFIED";
+        elState.style.color = "var(--state-triggered)";
+        elStatusDot.classList.add('active');
+        logEvent("KINETIC_TRIGGER", 0.99); // Dummy conf for now
+
+        triggeredTime = Date.now();
+        setTimeout(() => transition(STATE.COOL_DOWN), 100);
+    } else if (newState === STATE.COOL_DOWN) {
+        elReticle.classList.add('hidden');
+        elStatusDot.classList.remove('active');
+        // Wait then reset
+        setTimeout(() => transition(STATE.IDLE), CONFIG.coolDownTime);
+    }
+}
+
+function updateFSM(predictions) {
+    if (currentState === STATE.COOL_DOWN || currentState === STATE.TRIGGERED) return;
+
+    // No target?
+    if (!predictions || predictions.length === 0) {
+        if (currentState !== STATE.IDLE) transition(STATE.IDLE);
+        return;
+    }
+
+    const hand = predictions[0];
+    const score = hand.score;
+    const [x, y, w, h] = hand.bbox;
+
+    // We rely on renderVideoToCanvas to have prepared proper visual dimensions
+    // We recreate them here for mapping. This is redundant but safe.
+    // Or we could store them globally. Let's recalculate.
+
+    const vW = video.videoWidth;
+    const vH = video.videoHeight;
+    const cw = canvas.width;
+    const ch = canvas.height;
+
+    // We need "offX", "offY", "visualW", "visualH"
+    const rVid = vW / vH;
+    const rCan = cw / ch;
+
+    let visualW, visualH, offX, offY;
+
+    if (rCan > rVid) {
+        // Canvas wider -> Pillarbox
+        visualH = ch;
+        visualW = ch * rVid;
+        offY = 0;
+        offX = (cw - visualW) / 2;
+    } else {
+        // Canvas taller -> Letterbox
+        visualW = cw;
+        visualH = cw / rVid;
+        offX = 0;
+        offY = (ch - visualH) / 2;
+    }
+
+    // Normalized Hand Coords (0-1) in Source Video
+    const cx = x + w / 2;
+    const cy = y + h / 2;
+    const nx = cx / vW;
+    const ny = cy / vH;
+
+    // Screen Mapping (Canvas Coordinates)
+    // We draw mirrored. 
+    // If nx=0 (left of video), we draw it at RIGHT of canvas if mirrored?
+    // Wait. ctx.scale(-1, 1).
+    // drawImage(img, 0, 0) draws at top-right (x=0 in flipped system).
+    // So visual left edge of source = visual right edge of output?
+    // User MIRROR expectation:
+    // Move REAL RIGHT hand (Screen Right). 
+    // Camera sees LEFT side of frame.
+    // nx ~ 0.
+    // We want reticle at Screen Right.
+    // Screen X = offX + ((1-nx) * visualW) ??
+    // If nx=0, screenX = offX + visualW. (Right side).
+    // Yes. ((1-nx) * visualW) gives the x-coord from left edge for mirrored.
+
+    const screenX = offX + ((1 - nx) * visualW);
+    const screenY = offY + (ny * visualH);
+
+    elReticle.style.left = `${screenX}px`;
+    elReticle.style.top = `${screenY}px`;
+
+    // State Logic
+    if (currentState === STATE.IDLE) {
+        if (score > CONFIG.minScore) transition(STATE.OBSERVING);
+    }
+    else if (currentState === STATE.OBSERVING) {
+        if (score < CONFIG.minScore - 0.1) transition(STATE.IDLE);
+        if (hand.label !== 'face') {
+            transition(STATE.VALIDATING);
+        }
+    }
+    else if (currentState === STATE.VALIDATING) {
+        if (score < CONFIG.minScore - 0.1 || hand.label === 'face') {
+            transition(STATE.OBSERVING);
+            return;
+        }
+
+        // Update Progress
+        const elapsed = Date.now() - validateStartTime;
+        const progress = Math.min(elapsed / CONFIG.validationTime, 1);
+
+        // 283 is circle circumference
+        const offset = 283 - (283 * progress);
+        elRing.style.strokeDashoffset = offset;
+
+        if (progress >= 1.0) {
+            transition(STATE.TRIGGERED);
+        }
+    }
+}
+
+
+// --- VISION LOOP ---
+const modelParams = {
+    flipHorizontal: true,   // flip e.g for video 
+    maxNumBoxes: 1,
+    iouThreshold: 0.5,
+    scoreThreshold: 0.6,
+};
+
+function initSensor() {
+    handTrack.startVideo(video).then(status => {
+        if (status) {
+            isVideo = true;
+            btnToggle.innerText = "TERMINATE SENSOR";
+            runDetection();
+        } else {
+            elState.innerText = "SENSOR_FAIL";
+        }
+    });
+}
+
+function killSensor() {
+    handTrack.stopVideo(video);
+    isVideo = false;
+    btnToggle.innerText = "INIT SENSOR";
+    transition(STATE.IDLE);
+}
+
+function renderVideoToCanvas() {
+    const vW = video.videoWidth;
+    const vH = video.videoHeight;
+    if (!vW || !vH) return;
+
+    const cw = canvas.width;
+    const ch = canvas.height;
+
+    const rVid = vW / vH;
+    const rCan = cw / ch;
+
+    let w, h, x, y;
+
+    if (rCan > rVid) {
+        h = ch;
+        w = ch * rVid;
+        y = 0;
+        x = (cw - w) / 2;
+    } else {
+        w = cw;
+        h = cw / rVid;
+        x = 0;
+        y = (ch - h) / 2;
+    }
+
+    // Clear
+    ctx.clearRect(0, 0, cw, ch);
+
+    // Draw Mirrored
+    ctx.save();
+    ctx.translate(cw, 0);
+    ctx.scale(-1, 1);
+
+    // Draw centered
+    // In flipped context, origin is right. Positive X goes left.
+    // If we want to draw at visual 'x' (from left edge), that is 'cw - x' from right?
+    // No, standard flip: x becomes cw-x.
+    // We want the IMAGE to be flipped.
+    // drawImage(video, x, y, w, h). 
+    // This draws image normally at that rect?
+    // If we flipped the context, the image is drawn flipped.
+    // But WHERE is it drawn?
+    // If we effectively want to draw at 'x' from Left Edge (visual), 
+    // In flipped context, that rect corresponds to drawing at 'x' from origin?
+    // Let's test: x=0. Draw at 0. Result is at Right edge? 
+    // Yes.
+    // If we want to center the MIRRORED image.
+    // The "pillarbox" means we want black bars.
+    // The image should be in the center.
+    // Visually center = x .. x+w.
+    // In flipped context, x .. x+w is same numeric range, but results in visual cw-x .. cw-(x+w)?
+    // Basically, we draw at 'x, y' in flipped context.
+    // It will appear at 'cw-(x+w)'? No.
+    // Symmetrical centering means x = (cw-w)/2.
+    // Drawing at x in flipped context puts it at same offset from right.
+    // (cw - w)/2 from right IS (cw-w)/2 from left if symmetrical.
+    // So YES, we draw at x, y, w, h.
+
+    ctx.drawImage(video, 0, 0, vW, vH, x, y, w, h);
+
+    ctx.restore();
+}
+
+let lastFrame = 0;
+function runDetection() {
+    model.detect(video).then(predictions => {
+        renderVideoToCanvas();
+        updateFSM(predictions);
+
+        const now = Date.now();
+        const delta = now - lastFrame;
+        lastFrame = now;
+        elFps.innerText = Math.round(1000 / delta);
+
+        if (isVideo) requestAnimationFrame(runDetection);
+
+        // DEBUG UPDATE
+        updateDebug({
+            vDims: `${video.videoWidth}x${video.videoHeight}`,
+            cDims: `${canvas.width}x${canvas.height}`,
+            FPS: elFps.innerText,
+            Preds: predictions ? predictions.length : 0,
+            State: currentState,
+            vReady: video.readyState
+        });
+    });
+}
+
+
+// --- INIT ---
+btnToggle.addEventListener('click', () => {
+    if (!isVideo) initSensor();
+    else killSensor();
+});
+
+// Load Model
+handTrack.load(modelParams).then(lmodel => {
+    model = lmodel;
+    elState.innerText = "SENSOR ONLINE";
+    elDetail.innerText = "AWAITING ACTIVATION";
+    elState.style.color = "#555";
+});
+
+// Init Ledger
+initLedger();
+
+// Ledger UI
+const modal = document.getElementById('ledger-modal');
+document.getElementById('btn-view-ledger').addEventListener('click', () => {
+    modal.classList.remove('hidden');
+    updateLedgerUI();
+});
+document.getElementById('btn-close-ledger').addEventListener('click', () => modal.classList.add('hidden'));
+
+function updateLedgerUI() {
+    const list = document.getElementById('ledger-list');
+    getLedger(events => {
+        if (!events || events.length === 0) {
+            list.innerHTML = '<div class="ledger-empty">NO KINETIC SIGNATURES RECORDED</div>';
+            return;
+        }
+        list.innerHTML = events.map(e => `
+            <div class="ledger-item">
+                <div>
+                    <div style="color:var(--state-triggered)">${e.type}</div>
+                    <div class="ledger-hash">HASH: ${e.hash}</div>
+                </div>
+                <div style="text-align:right">
+                    <div>${e.timestamp.split('T')[1].split('.')[0]}</div>
+                    <div style="color:#666">CONF: ${e.confidence}</div>
+                </div>
+            </div>
+        `).join('');
+    });
+}
+
+
+
+// ... existing code ...
+
+</script>
 </body>
 
 </html>
