@@ -481,7 +481,7 @@ canvas {
 const CONFIG = {
     validationTime: 800, // ms
     coolDownTime: 2000,
-    minScore: 0.7,
+    minScore: 0.85,
     iouThreshold: 0.5
 };
 
@@ -703,12 +703,15 @@ function updateFSM(predictions) {
     }
     else if (currentState === STATE.OBSERVING) {
         if (score < CONFIG.minScore - 0.1) transition(STATE.IDLE);
-        if (hand.label !== 'face') {
+
+        // STRICT WHITELIST
+        if (['open', 'closed', 'hand'].includes(hand.label)) {
             transition(STATE.VALIDATING);
         }
     }
     else if (currentState === STATE.VALIDATING) {
-        if (score < CONFIG.minScore - 0.1 || hand.label === 'face') {
+        const validGesture = ['open', 'closed', 'hand'].includes(hand.label);
+        if (score < CONFIG.minScore - 0.1 || !validGesture) {
             transition(STATE.OBSERVING);
             return;
         }
